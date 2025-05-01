@@ -35,7 +35,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll() // Allow unauthenticated access to auth endpoints
                         .requestMatchers("/api/auth/login").permitAll() // Add this line explicitly
                         .requestMatchers("/api/auth/register").permitAll() 
-                        .anyRequest().authenticated() // Require authentication for all other requests
+                        .requestMatchers("/").permitAll()
+                        .anyRequest().authenticated() //  Require authentication for all other requests
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
