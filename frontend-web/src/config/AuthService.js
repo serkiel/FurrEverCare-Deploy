@@ -1,8 +1,8 @@
-import axios from 'axios';
+import axios from "axios";
 import React from "react";
-import { auth, provider, signInWithPopup } from '../config/firebase-config';
+import { auth, provider, signInWithPopup } from "../config/firebase-config";
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = "https://furrevercare-deploy-8.onrender.com/api";
 
 let requestInterceptor = null;
 
@@ -11,136 +11,142 @@ const setupAxiosInterceptors = (token) => {
   if (requestInterceptor !== null) {
     axios.interceptors.request.eject(requestInterceptor);
   }
-  
+
   // Add new interceptor
   requestInterceptor = axios.interceptors.request.use(
-    config => {
+    (config) => {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log('Added Authorization header:', config.headers.Authorization);
+        console.log(
+          "Added Authorization header:",
+          config.headers.Authorization
+        );
       } else {
-        console.log('No token available for Authorization header');
+        console.log("No token available for Authorization header");
       }
       return config;
     },
-    error => Promise.reject(error)
+    (error) => Promise.reject(error)
   );
 };
 
 class AuthService {
   setToken(token) {
-    console.log('Setting token:', token);
-    localStorage.setItem('token', token);
+    console.log("Setting token:", token);
+    localStorage.setItem("token", token);
     setupAxiosInterceptors(token);
   }
 
   getToken() {
-    const token = localStorage.getItem('token');
-    console.log('Getting token:', token);
+    const token = localStorage.getItem("token");
+    console.log("Getting token:", token);
     return token;
   }
 
   isAuthenticated() {
     const isAuth = !!this.getToken();
-    console.log('Is authenticated:', isAuth);
+    console.log("Is authenticated:", isAuth);
     return isAuth;
   }
 
   setUser(user) {
-    console.log('Setting user:', user);
+    console.log("Setting user:", user);
     const normalizedUser = {
       userId: user.userID || user.userId,
       name: user.name,
       email: user.email,
-      phone: user.phone
+      phone: user.phone,
     };
-    localStorage.setItem('user', JSON.stringify(normalizedUser));
+    localStorage.setItem("user", JSON.stringify(normalizedUser));
   }
 
   getUser() {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem("user");
     const user = userStr ? JSON.parse(userStr) : null;
-    console.log('Getting user:', user);
+    console.log("Getting user:", user);
     return user;
   }
 
   clearAuth() {
-    console.log('Clearing auth');
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    console.log("Clearing auth");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setupAxiosInterceptors(null); // Clear the interceptor by passing null token
   }
 
   async login(email, password) {
     try {
-      console.log('Login attempt:', { email });
+      console.log("Login attempt:", { email });
       const response = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
-        password
+        password,
       });
-      console.log('Login response:', response.data);
+      console.log("Login response:", response.data);
       const { userId, token } = response.data;
       this.setToken(token);
       const userResponse = await axios.get(`${API_BASE_URL}/users/${userId}`);
-      console.log('User response:', userResponse.data);
+      console.log("User response:", userResponse.data);
       this.setUser(userResponse.data);
       return userResponse.data;
     } catch (error) {
-      console.error('Login error:', error.response?.data || error.message);
-      throw error.response?.data || new Error('Login failed');
+      console.error("Login error:", error.response?.data || error.message);
+      throw error.response?.data || new Error("Login failed");
     }
   }
 
   async register(name, phone, email, password) {
     try {
-      console.log('Register attempt:', { name, email });
+      console.log("Register attempt:", { name, email });
       const response = await axios.post(`${API_BASE_URL}/auth/register`, {
         name,
         phone,
         email,
-        password
+        password,
       });
-      console.log('Register response:', response.data);
+      console.log("Register response:", response.data);
       const { userId, token } = response.data;
       this.setToken(token);
       const userResponse = await axios.get(`${API_BASE_URL}/users/${userId}`);
-      console.log('User response:', userResponse.data);
+      console.log("User response:", userResponse.data);
       this.setUser(userResponse.data);
       return userResponse.data;
     } catch (error) {
-      console.error('Register error:', error.response?.data || error.message);
-      throw error.response?.data || new Error('Registration failed');
+      console.error("Register error:", error.response?.data || error.message);
+      throw error.response?.data || new Error("Registration failed");
     }
   }
 
   async loginWithGoogle() {
     try {
-      console.log('Google login start');
+      console.log("Google login start");
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       const idToken = await user.getIdToken();
-      console.log('Firebase idToken:', idToken);
+      console.log("Firebase idToken:", idToken);
       const response = await axios.post(`${API_BASE_URL}/auth/google-auth`, {
-        idToken
+        idToken,
       });
-      console.log('Google auth response:', response.data);
+      console.log("Google auth response:", response.data);
       const { token, user: userData } = response.data;
       this.setToken(token);
       this.setUser(userData);
       return userData;
     } catch (error) {
-      console.error('Google login error:', error.response?.data || error.message);
+      console.error(
+        "Google login error:",
+        error.response?.data || error.message
+      );
       throw error;
     }
   }
 
   async logout() {
     try {
-      console.log('Logging out');
+      console.log("Logging out");
       await axios.post(`${API_BASE_URL}/auth/logout`);
       this.clearAuth();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       this.clearAuth();
     }
   }
@@ -149,33 +155,36 @@ class AuthService {
     try {
       const token = this.getToken();
       if (!token) {
-        console.log('No token found, redirecting to login');
-        window.location.href = '/login';
+        console.log("No token found, redirecting to login");
+        window.location.href = "/login";
         return;
       }
-      console.log('Token before request:', token);
-      console.log('Updating profile:', userData);
+      console.log("Token before request:", token);
+      console.log("Updating profile:", userData);
       const response = await axios.put(`${API_BASE_URL}/users/profile`, {
         userID: userData.userId,
         name: userData.name,
         email: userData.email,
-        phone: userData.phone
+        phone: userData.phone,
       });
-      console.log('Profile update response:', response.data);
+      console.log("Profile update response:", response.data);
       const updatedUser = {
         userId: userData.userId,
         name: userData.name,
         email: userData.email,
-        phone: userData.phone
+        phone: userData.phone,
       };
       this.setUser(updatedUser);
       return updatedUser;
     } catch (error) {
-      console.error('Profile update error:', error.response?.data || error.message);
+      console.error(
+        "Profile update error:",
+        error.response?.data || error.message
+      );
       if (error.response?.status === 403) {
-        console.log('Token likely invalid or expired, redirecting to login');
+        console.log("Token likely invalid or expired, redirecting to login");
         this.clearAuth();
-        window.location.href = '/login';
+        window.location.href = "/login";
       }
       throw error;
     }
