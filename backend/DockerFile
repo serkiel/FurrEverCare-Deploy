@@ -3,10 +3,12 @@ FROM eclipse-temurin:17-jdk-jammy as builder
 WORKDIR /app
 
 # Copy pom.xml and wrapper first to leverage Docker cache for dependencies
-# Ensure these files exist in your 'backend' directory and are committed to Git
 COPY ./mvnw .
 COPY ./.mvn ./.mvn
 COPY ./pom.xml .
+
+# ----> ADD THIS LINE TO FIX PERMISSIONS <----
+RUN chmod +x ./mvnw
 
 # Download dependencies using the wrapper
 RUN ./mvnw dependency:go-offline -B
@@ -15,6 +17,7 @@ RUN ./mvnw dependency:go-offline -B
 COPY ./src ./src
 
 # Package the application using the wrapper (skip tests)
+# This command also needs execute permission on mvnw
 RUN ./mvnw package -DskipTests -B
 
 # Stage 2: Create the final lightweight image
