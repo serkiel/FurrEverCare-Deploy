@@ -8,58 +8,50 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.cloud.FirestoreClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ResourceLoader;
 
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+// FileInputStream and FileNotFoundException are not directly needed for this approach
+// import java.io.InputStream; // Not directly needed for this approach if getApplicationDefault handles the stream
+// import java.io.FileInputStream;
+// import java.io.FileNotFoundException;
 
 @Configuration
 public class FirebaseConfig {
 
-    // ResourceLoader might not be needed anymore if you only used it for this
-    // private final ResourceLoader resourceLoader;
-    // public FirebaseConfig(ResourceLoader resourceLoader) {
-    //    this.resourceLoader = resourceLoader;
-    // }
+    // No ResourceLoader or its constructor needed for this approach
 
     @PostConstruct
     public void initializeFirebase() throws IOException {
-        if (FirebaseApp.getApps().isEmpty()) {
-            // Replace "classpath:serviceAccountKey.json" with the actual path from Render
-            String firebaseSecretFilePath = "/etc/secrets/serviceAccountKey.json"; // <--- UPDATE THIS PATH
-
-            // Check if the path is being overridden by an environment variable (good practice)
-            String pathFromEnv = System.getenv("FIREBASE_KEY_PATH");
-            if (pathFromEnv != null && !pathFromEnv.isEmpty()) {
-                firebaseSecretFilePath = pathFromEnv;
-            }
-
-            System.out.println("Attempting to load Firebase service account key from: " + firebaseSecretFilePath);
-
-            try (InputStream serviceAccount = new FileInputStream(firebaseSecretFilePath)) {
+        if (FirebaseApp.getApps().isEmpty()) { // Check if an app has already been initialized
+            try {
+                System.out.println("Attempting to initialize Firebase using Application Default Credentials (GOOGLE_APPLICATION_CREDENTIALS)...");
+                
+                // GoogleCredentials.getApplicationDefault() will automatically look for credentials,
+                // including the GOOGLE_APPLICATION_CREDENTIALS environment variable you set in Render.
                 FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                        .build();
+                    .setCredentials(GoogleCredentials.getApplicationDefault()) 
+                    .build();
 
                 FirebaseApp.initializeApp(options);
-                System.out.println("Firebase Admin SDK initialized successfully.");
-            } catch (FileNotFoundException e) {
-                System.err.println("Firebase service account key file not found at: " + firebaseSecretFilePath + ". Error: " + e.getMessage());
-                throw e;
+                System.out.println("Firebase Admin SDK initialized successfully using Application Default Credentials.");
+
             } catch (IOException e) {
-                System.err.println("Error initializing Firebase Admin SDK with file: " + firebaseSecretFilePath + ". Error: " + e.getMessage());
-                throw e;
+                System.err.println("Error initializing Firebase using Application Default Credentials.");
+                System.err.println("Ensure GOOGLE_APPLICATION_CREDENTIALS environment variable is set correctly in Render and points to a valid service account key file.");
+                System.err.println("The value of GOOGLE_APPLICATION_CREDENTIALS is currently: " + System.getenv("GOOGLE_APPLICATION_CREDENTIALS"));
+                System.err.println("Detailed error: " + e.getMessage());
+                e.printStackTrace(); // Print the full stack trace for more details
+                throw e; // Re-throw the exception to ensure the application startup fails clearly if Firebase doesn't init
             }
+        } else {
+            System.out.println("Firebase Admin SDK already initialized.");
         }
     }
 
-    // ... your @Bean methods for Firestore and FirebaseAuth remain the same ...
     @Bean
     public Firestore firestore() {
-        // Ensure FirebaseApp is initialized before calling this
+        // Ensure FirebaseApp is initialized before trying to get Firestore instance
         if (FirebaseApp.getApps().isEmpty()) {
              throw new IllegalStateException("FirebaseApp has not been initialized. Firestore bean cannot be created.");
         }
